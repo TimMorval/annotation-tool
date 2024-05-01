@@ -88,7 +88,7 @@ class AnnotationTool:
 
     def add_label(self, event=None):
         if self.currently_selected and self.label_entry.get().strip():
-            label = self.label_entry.get().strip()
+            label = self.label_entry.get().strip().upper()
             coords = self.canvas.coords(self.currently_selected)
             self.annotations[self.currently_selected] = {
                 'label': label, 'coordinates': coords}
