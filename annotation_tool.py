@@ -8,8 +8,22 @@ class AnnotationTool:
     def __init__(self, root):
         self.root = root
         self.root.title("Image Annotation Tool")
-        self.canvas = tk.Canvas(root, width=800, height=600)
-        self.canvas.pack()
+
+        # Setting up the scrolling canvas
+        self.canvas_frame = tk.Frame(root)
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+        self.x_scroll = tk.Scrollbar(
+            self.canvas_frame, orient="horizontal", command=self.canvas.xview)
+        self.y_scroll = tk.Scrollbar(
+            self.canvas_frame, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=self.x_scroll.set,
+                              yscrollcommand=self.y_scroll.set)
+
+        self.x_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+        self.y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Initialize the image and annotations list
         self.img = None
@@ -50,44 +64,46 @@ class AnnotationTool:
             self.img = Image.open(file_path)
             self.tk_img = ImageTk.PhotoImage(self.img)
             self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
+            self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
 
     def on_click(self, event):
-        self.start_x = event.x
-        self.start_y = event.y
+        # Convert canvas coordinates to window coordinates
+        self.start_x = self.canvas.canvasx(event.x)
+        self.start_y = self.canvas.canvasy(event.y)
         self.rect = None
-        # Check if clicking on an existing rectangle
         for rect in self.canvas.find_withtag("rectangle"):
             x1, y1, x2, y2 = self.canvas.coords(rect)
-            if x1 <= event.x <= x2 and y1 <= event.y <= y2:
+            if x1 <= self.start_x <= x2 and y1 <= self.start_y <= y2:
                 if self.currently_selected:
                     self.deselect_current()
                 self.currently_selected = rect
                 self.canvas.itemconfig(rect, outline='green')
                 self.btn_label.config(state=tk.NORMAL)
                 self.btn_delete.config(state=tk.NORMAL)
-                self.label_entry.focus_set()  # Focus the label entry upon selection
+                self.label_entry.focus_set()
                 return
-        # If not clicking on a rectangle, deselect the current one
         if self.currently_selected:
             self.deselect_current()
 
     def on_drag(self, event):
         if not self.rect:
+            curX = self.canvas.canvasx(event.x)
+            curY = self.canvas.canvasy(event.y)
             self.rect = self.canvas.create_rectangle(
-                self.start_x, self.start_y, event.x, event.y, outline='green', tags="rectangle")
+                self.start_x, self.start_y, curX, curY, outline='green', tags="rectangle")
         else:
+            curX = self.canvas.canvasx(event.x)
+            curY = self.canvas.canvasy(event.y)
             self.canvas.coords(self.rect, self.start_x,
-                               self.start_y, event.x, event.y)
+                               self.start_y, curX, curY)
 
     def on_release(self, event):
-        if self.rect and (self.start_x != event.x or self.start_y != event.y):
-            if self.currently_selected:
-                self.deselect_current()
-            self.currently_selected = self.rect
+        if self.rect:
             self.canvas.itemconfig(self.rect, outline='green')
             self.btn_label.config(state=tk.NORMAL)
             self.btn_delete.config(state=tk.NORMAL)
             self.label_entry.focus_set()
+            self.currently_selected = self.rect
 
     def add_label(self, event=None):
         if self.currently_selected and self.label_entry.get().strip():
