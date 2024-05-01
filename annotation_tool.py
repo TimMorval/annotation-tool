@@ -60,6 +60,7 @@ class AnnotationTool:
                 self.currently_selected = rect
                 self.canvas.itemconfig(rect, outline='green')
                 self.btn_label.config(state=tk.NORMAL)
+                self.label_entry.focus_set()  # Focus the label entry upon selection
                 return
         # If not clicking on a rectangle, deselect the current one
         if self.currently_selected:
@@ -81,25 +82,28 @@ class AnnotationTool:
             self.canvas.itemconfig(self.rect, outline='green')
             self.btn_label.config(state=tk.NORMAL)
             self.label_entry.focus_set()  # Focus the label entry when a new rectangle is drawn
-        elif not self.rect:
-            # Focus the label entry if an existing rectangle is clicked and still selected
-            if self.currently_selected:
-                self.label_entry.focus_set()
 
     def add_label(self, event=None):
         if self.currently_selected and self.label_entry.get().strip():
             label = self.label_entry.get().strip().upper()
             coords = self.canvas.coords(self.currently_selected)
-            self.annotations[self.currently_selected] = {
-                'label': label, 'coordinates': coords}
+            # Remove previous label text from canvas
+            if self.currently_selected in self.annotations:
+                label_id = self.annotations[self.currently_selected].get(
+                    'text_id')
+                if label_id:
+                    self.canvas.delete(label_id)
+            # Add new label
             x1, y1, _, _ = coords
-            self.canvas.create_text(
+            label_id = self.canvas.create_text(
                 x1, y1, anchor='nw', text=label, font=("Purisa", 10), fill="blue")
+            self.annotations[self.currently_selected] = {
+                'label': label, 'coordinates': coords, 'text_id': label_id}
             self.label_entry.delete(0, tk.END)
-            self.canvas.focus_set()  # Remove focus from the entry field after adding a label
+            self.canvas.focus_set()  # Remove focus from the entry field
 
     def deselect_current(self):
-        if self.currently_selected not in self.annotations:
+        if self.currently_selected not in self.annotations or 'label' not in self.annotations[self.currently_selected]:
             # Remove rectangle if no label was added
             self.canvas.delete(self.currently_selected)
         else:
