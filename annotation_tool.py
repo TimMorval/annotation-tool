@@ -135,8 +135,17 @@ class AnnotationTool:
             self.btn_delete.config(state=tk.DISABLED)
 
     def save_annotations(self):
+        # Creating a more structured JSON file with clear, hierarchical data
+        formatted_annotations = []
+        for key, value in self.annotations.items():
+            formatted_annotations.append({
+                "id": key,
+                "label": value.get("label", ""),
+                "coordinates": value.get("coordinates", []),
+                "text_id": value.get("text_id", "")
+            })
         with open("annotations.json", "w") as file:
-            json.dump(self.annotations, file, indent=4)
+            json.dump(formatted_annotations, file, indent=4)
         print("Annotations saved!")
 
 
