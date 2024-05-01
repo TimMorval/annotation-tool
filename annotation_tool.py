@@ -32,8 +32,12 @@ class AnnotationTool:
         self.label_entry.bind("<Return>", self.add_label)  # Bind the Enter key
 
         self.btn_label = tk.Button(
-            root, text="Add Label", command=self.add_label, state=tk.DISABLED)  # Initially disabled
+            root, text="Add Label", command=self.add_label, state=tk.DISABLED)
         self.btn_label.pack(side=tk.LEFT)
+
+        self.btn_delete = tk.Button(
+            root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
+        self.btn_delete.pack(side=tk.LEFT)
 
         # Bind mouse events
         self.canvas.bind("<ButtonPress-1>", self.on_click)
@@ -60,6 +64,7 @@ class AnnotationTool:
                 self.currently_selected = rect
                 self.canvas.itemconfig(rect, outline='green')
                 self.btn_label.config(state=tk.NORMAL)
+                self.btn_delete.config(state=tk.NORMAL)
                 self.label_entry.focus_set()  # Focus the label entry upon selection
                 return
         # If not clicking on a rectangle, deselect the current one
@@ -81,7 +86,8 @@ class AnnotationTool:
             self.currently_selected = self.rect
             self.canvas.itemconfig(self.rect, outline='green')
             self.btn_label.config(state=tk.NORMAL)
-            self.label_entry.focus_set()  # Focus the label entry when a new rectangle is drawn
+            self.btn_delete.config(state=tk.NORMAL)
+            self.label_entry.focus_set()
 
     def add_label(self, event=None):
         if self.currently_selected and self.label_entry.get().strip():
@@ -94,9 +100,8 @@ class AnnotationTool:
                 if label_id:
                     self.canvas.delete(label_id)
             # Add new label
-            x1, y1, _, _ = coords
             label_id = self.canvas.create_text(
-                x1, y1, anchor='nw', text=label, font=("Purisa", 10), fill="blue")
+                coords[0], coords[1], anchor='nw', text=label, font=("Purisa", 10), fill="blue")
             self.annotations[self.currently_selected] = {
                 'label': label, 'coordinates': coords, 'text_id': label_id}
             self.label_entry.delete(0, tk.END)
@@ -110,6 +115,24 @@ class AnnotationTool:
             self.canvas.itemconfig(self.currently_selected, outline='red')
         self.currently_selected = None
         self.btn_label.config(state=tk.DISABLED)
+        self.btn_delete.config(state=tk.DISABLED)
+
+    def delete_selected(self):
+        if self.currently_selected:
+            # Delete the label text from canvas
+            if self.currently_selected in self.annotations:
+                label_id = self.annotations[self.currently_selected].get(
+                    'text_id')
+                if label_id:
+                    self.canvas.delete(label_id)
+            # Delete the rectangle
+            self.canvas.delete(self.currently_selected)
+            # Remove from annotations dictionary
+            if self.currently_selected in self.annotations:
+                del self.annotations[self.currently_selected]
+            self.currently_selected = None
+            self.btn_label.config(state=tk.DISABLED)
+            self.btn_delete.config(state=tk.DISABLED)
 
     def save_annotations(self):
         with open("annotations.json", "w") as file:
