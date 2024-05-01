@@ -56,19 +56,14 @@ class AnnotationTool:
             x1, y1, x2, y2 = self.canvas.coords(rect)
             if x1 <= event.x <= x2 and y1 <= event.y <= y2:
                 if self.currently_selected:
-                    self.canvas.itemconfig(
-                        self.currently_selected, outline='red')
+                    self.deselect_current()
                 self.currently_selected = rect
                 self.canvas.itemconfig(rect, outline='green')
-                # Enable the add label button
                 self.btn_label.config(state=tk.NORMAL)
                 return
         # If not clicking on a rectangle, deselect the current one
         if self.currently_selected:
-            self.canvas.itemconfig(self.currently_selected, outline='red')
-            self.currently_selected = None
-            # Disable the add label button
-            self.btn_label.config(state=tk.DISABLED)
+            self.deselect_current()
 
     def on_drag(self, event):
         if not self.rect:
@@ -81,15 +76,17 @@ class AnnotationTool:
     def on_release(self, event):
         if self.rect and (self.start_x != event.x or self.start_y != event.y):
             if self.currently_selected:
-                self.canvas.itemconfig(self.currently_selected, outline='red')
+                self.deselect_current()
             self.currently_selected = self.rect
             self.canvas.itemconfig(self.rect, outline='green')
-            # Enable the add label button
             self.btn_label.config(state=tk.NORMAL)
-        self.label_entry.focus_set()
+            self.label_entry.focus_set()  # Focus the label entry when a new rectangle is drawn
+        elif not self.rect:
+            # Focus the label entry if an existing rectangle is clicked and still selected
+            if self.currently_selected:
+                self.label_entry.focus_set()
 
     def add_label(self, event=None):
-        # Check if a rectangle is selected and label is not empty
         if self.currently_selected and self.label_entry.get().strip():
             label = self.label_entry.get().strip()
             coords = self.canvas.coords(self.currently_selected)
@@ -99,7 +96,16 @@ class AnnotationTool:
             self.canvas.create_text(
                 x1, y1, anchor='nw', text=label, font=("Purisa", 10), fill="blue")
             self.label_entry.delete(0, tk.END)
-            self.canvas.focus_set()  # Remove focus from the entry field
+            self.canvas.focus_set()  # Remove focus from the entry field after adding a label
+
+    def deselect_current(self):
+        if self.currently_selected not in self.annotations:
+            # Remove rectangle if no label was added
+            self.canvas.delete(self.currently_selected)
+        else:
+            self.canvas.itemconfig(self.currently_selected, outline='red')
+        self.currently_selected = None
+        self.btn_label.config(state=tk.DISABLED)
 
     def save_annotations(self):
         with open("annotations.json", "w") as file:
