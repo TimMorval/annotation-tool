@@ -28,6 +28,7 @@ class AnnotationTool:
 
         self.label_entry = tk.Entry(root)
         self.label_entry.pack(side=tk.LEFT)
+        self.label_entry.bind("<Return>", self.add_label)  # Bind the Enter key
 
         btn_label = tk.Button(root, text="Add Label", command=self.add_label)
         btn_label.pack(side=tk.LEFT)
@@ -35,6 +36,8 @@ class AnnotationTool:
         # Bind mouse events
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
+        # Adjust focus on release after dragging
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
     def load_image(self):
         file_path = filedialog.askopenfilename()
@@ -55,12 +58,26 @@ class AnnotationTool:
         self.canvas.coords(self.rect, self.start_x,
                            self.start_y, event.x, event.y)
 
-    def add_label(self):
-        # Add label and coordinates to the annotations dictionary
-        label = self.label_entry.get()
+    def on_release(self, event):
+        # After releasing the mouse, focus the label entry if a rectangle was actually drawn
         coords = self.canvas.coords(self.rect)
-        self.annotations[self.rect] = {'label': label, 'coordinates': coords}
-        self.label_entry.delete(0, tk.END)
+        # Check for non-trivial size
+        if self.rect and (coords[2] - coords[0] > 1 or coords[3] - coords[1] > 1):
+            self.label_entry.focus_set()
+
+    def add_label(self, event=None):  # Optional event argument for the key bind
+        label = self.label_entry.get().strip()
+        if label:  # Check if the label is not empty
+            coords = self.canvas.coords(self.rect)
+            self.annotations[self.rect] = {
+                'label': label, 'coordinates': coords}
+            # Display the label on the canvas
+            x1, y1, _, _ = coords
+            self.canvas.create_text(
+                x1, y1, anchor='nw', text=label, font=("Purisa", 10), fill="blue")
+            self.label_entry.delete(0, tk.END)
+            # Remove focus from the entry field
+            self.canvas.focus_set()  # Set focus back to the canvas or some other neutral place
 
     def save_annotations(self):
         # Save the annotations to a JSON file
