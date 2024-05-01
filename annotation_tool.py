@@ -25,6 +25,15 @@ class AnnotationTool:
         self.y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+        # Enabling mousewheel scrolling
+        # For Windows and Linux
+        self.canvas.bind("<MouseWheel>", self.on_mousewheel)
+        # For Linux, scrolling up
+        self.canvas.bind("<Button-4>", self.on_mousewheel)
+        # For Linux, scrolling down
+        self.canvas.bind("<Button-5>", self.on_mousewheel)
+        self.root.bind("<Command-MouseWheel>", self.on_mousewheel)  # For macOS
+
         # Initialize the image and annotations list
         self.img = None
         self.annotations = {}
@@ -57,6 +66,20 @@ class AnnotationTool:
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
+
+    def on_mousewheel(self, event):
+        # Shift+MouseWheel for horizontal on Windows and Linux
+        if event.state == 1 or event.num in (4, 5):
+            if event.num == 4 or event.delta > 0:  # Wheel scrolled up
+                self.canvas.xview_scroll(-1, "units")
+            elif event.num == 5 or event.delta < 0:  # Wheel scrolled down
+                self.canvas.xview_scroll(1, "units")
+        else:
+            # MouseWheel scrolling for vertical
+            if event.num == 4 or event.delta > 0:  # Wheel scrolled up
+                self.canvas.yview_scroll(-1, "units")
+            elif event.num == 5 or event.delta < 0:  # Wheel scrolled down
+                self.canvas.yview_scroll(1, "units")
 
     def load_image(self):
         file_path = filedialog.askopenfilename()
