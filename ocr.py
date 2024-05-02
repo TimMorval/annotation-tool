@@ -66,7 +66,7 @@ tasks = []
 for f in Path('image').glob('*.png'):
     with Image.open(f.absolute()) as image:
         tesseract_output = pytesseract.image_to_data(
-            image, output_type=pytesseract.Output.DICT)
+            image, lang='fra', output_type=pytesseract.Output.DICT)
         task = convert_to_ls(image, tesseract_output)
         tasks.append(task)
 
