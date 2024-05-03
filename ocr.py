@@ -63,7 +63,7 @@ def convert_to_ls(image, tesseract_output):
 
 tasks = []
 # collect the receipt images from the image directory
-for f in Path('image').glob('*.png'):
+for f in Path('images').glob('*.png'):
     with Image.open(f.absolute()) as image:
         tesseract_output = pytesseract.image_to_data(
             image, lang='fra', output_type=pytesseract.Output.DICT)

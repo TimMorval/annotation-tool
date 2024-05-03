@@ -1,3 +1,6 @@
 .venv
 .vscode
 *.json
+predictions
+to_convert
+images
