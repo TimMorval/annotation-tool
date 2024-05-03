@@ -2,6 +2,7 @@ from textwrap import dedent
 import tkinter as tk
 from tkinter import Frame, filedialog, Label
 from tkinter import messagebox
+from uuid import uuid4
 from PIL import Image, ImageTk
 import json
 
@@ -26,6 +27,7 @@ class AnnotationTool:
         self.canvas.bind("<Button-4>", self.on_mousewheel)
         self.canvas.bind("<Button-5>", self.on_mousewheel)
         self.root.bind("<Command-MouseWheel>", self.on_mousewheel)
+        self.annotations_path = None
         self.img = None
         self.annotations = {}
         self.rect = None
@@ -68,19 +70,12 @@ class AnnotationTool:
             elif event.num == 5 or event.delta < 0:
                 self.canvas.yview_scroll(1, "units")
 
-    def load_image(self):
-        file_path = filedialog.askopenfilename()
-        if file_path:
-            self.img = Image.open(file_path)
-            self.tk_img = ImageTk.PhotoImage(self.img)
-            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
-            self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
-
     def load_annotations(self):
         annotations_path = filedialog.askopenfilename(
             title="Select JSON Annotations File")
         if annotations_path:
             with open(annotations_path, 'r') as file:
+                self.annotations_path = annotations_path
                 data = json.load(file)
                 image_path = data['data']['ocr']
                 self.img = Image.open(image_path)
@@ -154,8 +149,8 @@ class AnnotationTool:
             label = self.label_entry.get().strip().upper()
             text = self.text_entry.get().strip()
             coords = self.canvas.coords(self.currently_selected)
-            self.annotations[self.currently_selected] = {'label': label, 'text': text, 'coordinates': coords,
-                                                         'rect_id': self.currently_selected, 'text_id': self.annotations[self.currently_selected]['text_id']}
+            self.annotations[self.currently_selected]['value']['label'] = label
+            self.annotations[self.currently_selected]['value']['text'] = text
             self.update_canvas_text(coords, f"{text}, {label}")
             self.label_entry.delete(0, tk.END)
             self.text_entry.delete(0, tk.END)
@@ -192,11 +187,43 @@ class AnnotationTool:
             self.btn_label.config(state=tk.DISABLED)
             self.btn_delete.config(state=tk.DISABLED)
 
+    def format_annotations(self):
+        results = []
+        for annotation in self.annotations.values():
+            annot_value = annotation['value']
+            bbox = {
+                'x': annot_value['x'],
+                'y': annot_value['y'],
+                'width': annot_value['width'],
+                'height': annot_value['height'],
+                'rotation': 0
+            }
+            text = annot_value['text']
+            label = annot_value['label']
+            if not text:
+                continue
+            region_id = str(uuid4())[:10]
+            bbox_result = {
+                'id': region_id, 'from_name': 'bbox', 'to_name': 'image', 'type': 'rectangle',
+                'value': bbox}
+            transcription_result = {
+                'id': region_id, 'from_name': 'transcription', 'to_name': 'image', 'type': 'textarea',
+                'value': dict(text=text, label=label, **bbox)}
+            results.extend([bbox_result, transcription_result])
+        return {
+            'data': {
+                'ocr': self.img.filename
+            },
+            'predictions': [{
+                'result': results,
+                'score': 100
+            }]
+        }
+
     def save_annotations(self):
         if self.annotations:
-            formatted_annotations = [{'id': key, 'label': value['label'], 'text': value['text'],
-                                      'coordinates': value['coordinates']} for key, value in self.annotations.items()]
-            with open("annotations.json", "w") as file:
+            formatted_annotations = self.format_annotations()
+            with open(self.annotations_path, "w") as file:
                 json.dump(formatted_annotations, file, indent=4)
             messagebox.showinfo("Success", "Annotations saved!")
         else:
