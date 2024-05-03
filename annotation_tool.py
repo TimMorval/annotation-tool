@@ -1,3 +1,4 @@
+from textwrap import dedent
 import tkinter as tk
 from tkinter import Frame, filedialog, Label
 from tkinter import messagebox
@@ -9,11 +10,8 @@ class AnnotationTool:
     def __init__(self, root: Frame):
         self.root = root
         self.root.title("Image Annotation Tool")
-
-        # Setting up the scrolling canvas
         self.canvas_frame = tk.Frame(root)
         self.canvas_frame.pack(fill=tk.BOTH, expand=True)
-
         self.canvas = tk.Canvas(self.canvas_frame, bg="white")
         self.x_scroll = tk.Scrollbar(
             self.canvas_frame, orient="horizontal", command=self.canvas.xview)
@@ -21,71 +19,53 @@ class AnnotationTool:
             self.canvas_frame, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(xscrollcommand=self.x_scroll.set,
                               yscrollcommand=self.y_scroll.set)
-
         self.x_scroll.pack(side=tk.BOTTOM, fill=tk.X)
         self.y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # Enabling mousewheel scrolling
-        # For Windows and Linux
         self.canvas.bind("<MouseWheel>", self.on_mousewheel)
-        # For Linux, scrolling up
         self.canvas.bind("<Button-4>", self.on_mousewheel)
-        # For Linux, scrolling down
         self.canvas.bind("<Button-5>", self.on_mousewheel)
-        self.root.bind("<Command-MouseWheel>", self.on_mousewheel)  # For macOS
-
-        # Initialize the image and annotations list
+        self.root.bind("<Command-MouseWheel>", self.on_mousewheel)
         self.img = None
         self.annotations = {}
         self.rect = None
         self.start_x = None
         self.start_y = None
         self.currently_selected = None
-
-        # Buttons and entries for control
-        btn_load = tk.Button(root, text="Load Image", command=self.load_image)
+        btn_load = tk.Button(root, text="Load Annotations",
+                             command=self.load_annotations)
         btn_load.pack(side=tk.LEFT)
-
         btn_save = tk.Button(root, text="Save Annotations",
                              command=self.save_annotations)
         btn_save.pack(side=tk.LEFT)
-
         self.btn_delete = tk.Button(
             root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
         self.btn_delete.pack(side=tk.LEFT)
-
         label_label = Label(root, text="Label:")
         label_label.pack(side=tk.LEFT)
         self.label_entry = tk.Entry(root)
         self.label_entry.pack(side=tk.LEFT)
-
         text_label = Label(root, text="Text:")
         text_label.pack(side=tk.LEFT)
         self.text_entry = tk.Entry(root)
         self.text_entry.pack(side=tk.LEFT)
-
         self.btn_label = tk.Button(
             root, text="Add Annotation", command=self.add_label, state=tk.DISABLED)
         self.btn_label.pack(side=tk.LEFT)
-
-        # Bind mouse events
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
     def on_mousewheel(self, event):
-        # Shift+MouseWheel for horizontal on Windows and Linux
         if event.state == 1 or event.num in (4, 5):
-            if event.num == 4 or event.delta > 0:  # Wheel scrolled up
+            if event.num == 4 or event.delta > 0:
                 self.canvas.xview_scroll(-1, "units")
-            elif event.num == 5 or event.delta < 0:  # Wheel scrolled down
+            elif event.num == 5 or event.delta < 0:
                 self.canvas.xview_scroll(1, "units")
         else:
-            # MouseWheel scrolling for vertical
-            if event.num == 4 or event.delta > 0:  # Wheel scrolled up
+            if event.num == 4 or event.delta > 0:
                 self.canvas.yview_scroll(-1, "units")
-            elif event.num == 5 or event.delta < 0:  # Wheel scrolled down
+            elif event.num == 5 or event.delta < 0:
                 self.canvas.yview_scroll(1, "units")
 
     def load_image(self):
@@ -96,8 +76,37 @@ class AnnotationTool:
             self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
             self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
 
+    def load_annotations(self):
+        annotations_path = filedialog.askopenfilename(
+            title="Select JSON Annotations File")
+        if annotations_path:
+            with open(annotations_path, 'r') as file:
+                data = json.load(file)
+                image_path = data['data']['ocr']
+                self.img = Image.open(image_path)
+                self.tk_img = ImageTk.PhotoImage(self.img)
+                self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
+                self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
+                self.draw_annotations(data['predictions'][0]['result'])
+
+    def draw_annotations(self, annotations):
+        for item in annotations:
+            if item['type'] == 'textarea':
+                bbox = item['value']
+                x1 = bbox['x'] * self.img.width / 100
+                y1 = bbox['y'] * self.img.height / 100
+                x2 = x1 + (bbox['width'] * self.img.width / 100)
+                y2 = y1 + (bbox['height'] * self.img.height / 100)
+                rect_id = self.canvas.create_rectangle(
+                    x1, y1, x2, y2, outline='red', tags="rectangle")
+                text_x = bbox['x'] * self.img.width / 100
+                text_y = bbox['y'] * self.img.height / 100
+                text_id = self.canvas.create_text(text_x, text_y, anchor='nw', text=dedent(f"""{
+                    bbox['text']} ({bbox['label']})"""), font=("Purisa", 10), fill="blue")
+                self.annotations[rect_id] = {'rect_id': rect_id, 'text_id': text_id,
+                                             'value': bbox, 'text': bbox['text'], 'label': bbox['label']}
+
     def on_click(self, event):
-        # Convert canvas coordinates to window coordinates
         self.start_x = self.canvas.canvasx(event.x)
         self.start_y = self.canvas.canvasy(event.y)
         self.rect = None
@@ -110,7 +119,6 @@ class AnnotationTool:
                 self.canvas.itemconfig(rect, outline='green')
                 self.btn_label.config(state=tk.NORMAL)
                 self.btn_delete.config(state=tk.NORMAL)
-                # Set the entry fields with the existing label and text
                 annotation_data = self.annotations.get(rect)
                 if annotation_data:
                     self.label_entry.delete(0, tk.END)
@@ -126,7 +134,7 @@ class AnnotationTool:
             curX = self.canvas.canvasx(event.x)
             curY = self.canvas.canvasy(event.y)
             self.rect = self.canvas.create_rectangle(
-                self.start_x, self.start_y, curX, curY, outline='green', tags="rectangle")
+                self.start_x, self.start_y, curX, curY, outline='red', tags="rectangle")
         else:
             curX = self.canvas.canvasx(event.x)
             curY = self.canvas.canvasy(event.y)
@@ -146,26 +154,18 @@ class AnnotationTool:
             label = self.label_entry.get().strip().upper()
             text = self.text_entry.get().strip()
             coords = self.canvas.coords(self.currently_selected)
-            # Update the annotations with label and additional text
-            self.annotations[self.currently_selected] = {
-                'label': label,
-                'text': text,
-                'coordinates': coords,
-                'text_id': self.annotations.get(self.currently_selected, {}).get('text_id')
-            }
-            # Update the text display on the canvas
+            self.annotations[self.currently_selected] = {'label': label, 'text': text, 'coordinates': coords,
+                                                         'rect_id': self.currently_selected, 'text_id': self.annotations[self.currently_selected]['text_id']}
             self.update_canvas_text(coords, f"{text}, {label}")
             self.label_entry.delete(0, tk.END)
             self.text_entry.delete(0, tk.END)
-
-            # Unfocus and deselect the current selection
             self.deselect_current()
         else:
             messagebox.showerror(
                 "Error", "Please make sure a rectangle is selected and text fields are not empty.")
 
     def update_canvas_text(self, coords, text):
-        text_id = self.annotations[self.currently_selected].get('text_id')
+        text_id = self.annotations[self.currently_selected]['text_id']
         if text_id:
             self.canvas.delete(text_id)
         new_text_id = self.canvas.create_text(
@@ -173,10 +173,7 @@ class AnnotationTool:
         self.annotations[self.currently_selected]['text_id'] = new_text_id
 
     def deselect_current(self):
-        if self.currently_selected not in self.annotations or 'label' not in self.annotations[self.currently_selected]:
-            # Remove rectangle if no label was added
-            self.canvas.delete(self.currently_selected)
-        else:
+        if self.currently_selected:
             self.canvas.itemconfig(self.currently_selected, outline='red')
         self.currently_selected = None
         self.btn_label.config(state=tk.DISABLED)
@@ -184,16 +181,12 @@ class AnnotationTool:
 
     def delete_selected(self):
         if self.currently_selected:
-            # Delete the label text from canvas
             if self.currently_selected in self.annotations:
                 label_id = self.annotations[self.currently_selected].get(
                     'text_id')
                 if label_id:
                     self.canvas.delete(label_id)
-            # Delete the rectangle
-            self.canvas.delete(self.currently_selected)
-            # Remove from annotations dictionary
-            if self.currently_selected in self.annotations:
+                self.canvas.delete(self.currently_selected)
                 del self.annotations[self.currently_selected]
             self.currently_selected = None
             self.btn_label.config(state=tk.DISABLED)
@@ -201,13 +194,8 @@ class AnnotationTool:
 
     def save_annotations(self):
         if self.annotations:
-            formatted_annotations = [{
-                "id": key,
-                "label": value['label'],
-                "text": value['text'],
-                "coordinates": value['coordinates'],
-                "text_id": value['text_id']
-            } for key, value in self.annotations.items()]
+            formatted_annotations = [{'id': key, 'label': value['label'], 'text': value['text'],
+                                      'coordinates': value['coordinates']} for key, value in self.annotations.items()]
             with open("annotations.json", "w") as file:
                 json.dump(formatted_annotations, file, indent=4)
             messagebox.showinfo("Success", "Annotations saved!")
