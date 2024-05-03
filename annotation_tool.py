@@ -1,6 +1,6 @@
 from textwrap import dedent
 import tkinter as tk
-from tkinter import Frame, filedialog, Label
+from tkinter import Tk, filedialog, Label
 from tkinter import messagebox
 from uuid import uuid4
 from PIL import Image, ImageTk
@@ -8,7 +8,7 @@ import json
 
 
 class AnnotationTool:
-    def __init__(self, root: Frame):
+    def __init__(self, root: Tk):
         self.root = root
         self.root.title("Image Annotation Tool")
         self.canvas_frame = tk.Frame(root)
@@ -95,7 +95,7 @@ class AnnotationTool:
                 rect_id = self.canvas.create_rectangle(
                     x1, y1, x2, y2, outline='red', tags="rectangle")
                 text_x = bbox['x'] * self.img.width / 100
-                text_y = bbox['y'] * self.img.height / 100
+                text_y = bbox['y'] * self.img.height / 100 - 10
                 text_id = self.canvas.create_text(text_x, text_y, anchor='nw', text=dedent(f"""{
                     bbox['text']} ({bbox['label']})"""), font=("Purisa", 10), fill="blue")
                 self.annotations[rect_id] = {'rect_id': rect_id, 'text_id': text_id,
@@ -151,7 +151,7 @@ class AnnotationTool:
             coords = self.canvas.coords(self.currently_selected)
             self.annotations[self.currently_selected]['value']['label'] = label
             self.annotations[self.currently_selected]['value']['text'] = text
-            self.update_canvas_text(coords, f"{text}, {label}")
+            self.update_canvas_text(coords, f"{text} ({label})")
             self.label_entry.delete(0, tk.END)
             self.text_entry.delete(0, tk.END)
             self.deselect_current()
@@ -164,7 +164,7 @@ class AnnotationTool:
         if text_id:
             self.canvas.delete(text_id)
         new_text_id = self.canvas.create_text(
-            coords[0], coords[1], anchor='nw', text=text, font=("Purisa", 10), fill="blue")
+            coords[0], coords[1] - 10, anchor='nw', text=text, font=("Purisa", 10), fill="blue")
         self.annotations[self.currently_selected]['text_id'] = new_text_id
 
     def deselect_current(self):
