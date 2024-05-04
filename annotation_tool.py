@@ -83,9 +83,23 @@ class AnnotationTool:
                 image_path = data['data']['ocr']
                 self.img = Image.open(image_path)
                 self.tk_img = ImageTk.PhotoImage(self.img)
-                self.canvas.delete("all")
+
+                # Resetting the canvas and internal states
+                self.canvas.delete("all")  # Clear the canvas of any drawings
+                self.annotations.clear()  # Clear any stored annotations
+                self.currently_selected = None  # Clear current selection
+                self.label_entry.delete(0, tk.END)  # Clear label entry box
+                self.text_entry.delete(0, tk.END)  # Clear text entry box
+                # Disable Add Annotation button
+                self.btn_label.config(state=tk.DISABLED)
+                # Disable Delete button
+                self.btn_delete.config(state=tk.DISABLED)
+
+                # Create image and set scroll region
                 self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
                 self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
+
+                # Draw annotations from the loaded file
                 self.draw_annotations(data['predictions'][0]['result'])
 
     def draw_annotations(self, annotations):
