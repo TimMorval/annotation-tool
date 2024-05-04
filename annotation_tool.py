@@ -47,13 +47,16 @@ class AnnotationTool:
         label_label.pack(side=tk.LEFT)
         self.label_entry = tk.Entry(root)
         self.label_entry.pack(side=tk.LEFT)
+        self.label_entry.bind("<Return>", self.add_label)
         text_label = Label(root, text="Text:")
         text_label.pack(side=tk.LEFT)
         self.text_entry = tk.Entry(root)
         self.text_entry.pack(side=tk.LEFT)
+        self.text_entry.bind("<Return>", self.add_label)
         self.btn_label = tk.Button(
             root, text="Add Annotation", command=self.add_label, state=tk.DISABLED)
         self.btn_label.pack(side=tk.LEFT)
+
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
@@ -114,10 +117,11 @@ class AnnotationTool:
                 self.canvas.itemconfig(rect, outline='green')
                 self.btn_label.config(state=tk.NORMAL)
                 self.btn_delete.config(state=tk.NORMAL)
-                annotation_data = self.annotations.get(rect)
+                annotation_data = self.annotations[self.currently_selected]['value']
                 if annotation_data:
                     self.label_entry.delete(0, tk.END)
-                    self.label_entry.insert(0, annotation_data['label'])
+                    self.label_entry.insert(
+                        0, annotation_data['label'])
                     self.text_entry.delete(0, tk.END)
                     self.text_entry.insert(0, annotation_data['text'])
                 return
