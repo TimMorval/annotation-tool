@@ -83,6 +83,7 @@ class AnnotationTool:
                 image_path = data['data']['ocr']
                 self.img = Image.open(image_path)
                 self.tk_img = ImageTk.PhotoImage(self.img)
+                self.canvas.delete("all")
                 self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
                 self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
                 self.draw_annotations(data['predictions'][0]['result'])
