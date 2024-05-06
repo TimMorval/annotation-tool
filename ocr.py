@@ -62,7 +62,7 @@ def convert_to_ls(image, tesseract_output):
     }
 
 
-def extract_text_from_images(image_folder):
+def extract_text_from_images(image_folder, output_file):
     # Path to the folder where the images are stored
     image_files = [f for f in os.listdir(image_folder) if f.endswith('.png')]
 
@@ -78,7 +78,7 @@ def extract_text_from_images(image_folder):
             tasks.append(task)
 
     # create a file to import into Label Studio
-    with open('ocr_tasks.json', mode='w') as f:
+    with open(output_file, mode='w') as f:
         json.dump(tasks, f, indent=2)
 
 
