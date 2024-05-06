@@ -1,3 +1,4 @@
+from pathlib import Path
 import torch.optim as optim
 from transformers import AutoModelForTokenClassification
 from torch.utils.data import DataLoader
@@ -59,15 +60,23 @@ def train_model(model, train_loader, optimizer, device, num_epochs):
 if __name__ == "__main__":
 
     with open('labels.json') as f:
-        labels = json.load(f)
+        label2id = json.load(f)
+        id2label = {v: k for k, v in label2id.items()}
+    if Path("model").exists():
+        model = AutoModelForTokenClassification.from_pretrained(
+            "./model", num_labels=len(label2id))
+    else:
+        model = AutoModelForTokenClassification.from_pretrained(
+            "microsoft/layoutlmv3-base", num_labels=len(label2id)
+        )
+    # Update the model configuration with label2id and id2label
+    model.config.label2id = label2id
+    model.config.id2label = id2label
 
-    model = AutoModelForTokenClassification.from_pretrained(
-        "microsoft/layoutlmv3-base", num_labels=len(labels)
-    )
     with open("Training_layoutLMV3.json") as f:
         training_data = json.load(f)
 
-    dataset = load_training_dataset(training_data, labels)
+    dataset = load_training_dataset(training_data, label2id)
     dataset = dataset.map(process_data_to_model_inputs, batched=True)
     dataset.set_format(type='torch', columns=[
         'input_ids', 'attention_mask', 'bbox', 'labels'])
@@ -76,6 +85,6 @@ if __name__ == "__main__":
     optimizer = optim.AdamW(model.parameters(), lr=5e-5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_model(model, train_loader, optimizer, device, num_epochs=3)
+    train_model(model, train_loader, optimizer, device, num_epochs=30)
 
     model.save_pretrained('./model')
