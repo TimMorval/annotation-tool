@@ -157,6 +157,16 @@ class AnnotationTool:
 
     def on_release(self, event):
         if self.rect:
+            if self.rect not in self.annotations:
+                bbox = {
+                    'x': self.start_x * 100 / self.img.width,
+                    'y': self.start_y * 100 / self.img.height,
+                    'width': (self.canvas.canvasx(event.x) - self.start_x) * 100 / self.img.width,
+                    'height': (self.canvas.canvasy(event.y) - self.start_y) * 100 / self.img.height,
+                    'rotation': 0
+                }
+                self.annotations[self.rect] = {
+                    'rect_id': self.rect, 'text_id': None, 'value': bbox}
             self.canvas.itemconfig(self.rect, outline='green')
             self.btn_label.config(state=tk.NORMAL)
             self.btn_delete.config(state=tk.NORMAL)
@@ -188,7 +198,11 @@ class AnnotationTool:
 
     def deselect_current(self):
         if self.currently_selected:
-            self.canvas.itemconfig(self.currently_selected, outline='red')
+            if "label" in self.annotations[self.currently_selected]['value'] and "text" in self.annotations[self.currently_selected]['value']:
+                self.canvas.itemconfig(self.currently_selected, outline='red')
+            else:
+                self.annotations.pop(self.currently_selected)
+                self.canvas.delete(self.currently_selected)
         self.currently_selected = None
         self.btn_label.config(state=tk.DISABLED)
         self.btn_delete.config(state=tk.DISABLED)
