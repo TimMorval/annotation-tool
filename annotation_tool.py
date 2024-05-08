@@ -113,7 +113,7 @@ class AnnotationTool:
                 rect_id = self.canvas.create_rectangle(
                     x1, y1, x2, y2, outline='red', tags="rectangle")
                 text_x = bbox['x'] * self.img.width / 100
-                text_y = bbox['y'] * self.img.height / 100 - 10
+                text_y = bbox['y'] * self.img.height / 100 - 12
                 text_id = self.canvas.create_text(text_x, text_y, anchor='nw', text=dedent(f"""{
                     bbox['text']} ({bbox['label']})"""), font=("Purisa", 10), fill="blue")
                 self.annotations[rect_id] = {'rect_id': rect_id, 'text_id': text_id,
@@ -193,7 +193,7 @@ class AnnotationTool:
         if text_id:
             self.canvas.delete(text_id)
         new_text_id = self.canvas.create_text(
-            coords[0], coords[1] - 10, anchor='nw', text=text, font=("Purisa", 10), fill="blue")
+            coords[0], coords[1] - 12, anchor='nw', text=text, font=("Purisa", 10), fill="blue")
         self.annotations[self.currently_selected]['text_id'] = new_text_id
 
     def deselect_current(self):
@@ -231,9 +231,10 @@ class AnnotationTool:
                 'height': annot_value['height'],
                 'rotation': 0
             }
+            h = bbox['height']
             text = annot_value['text']
             label = annot_value['label']
-            if not text:
+            if not text or not label or h == 0:
                 continue
             region_id = str(uuid4())[:10]
             bbox_result = {
