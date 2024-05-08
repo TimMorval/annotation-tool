@@ -61,10 +61,18 @@ if __name__ == "__main__":
     with open('labels.json') as f:
         label2id = json.load(f)
         id2label = {v: k for k, v in label2id.items()}
+
     if Path("model").exists():
-        print("Loading model from local directory")
-        model = AutoModelForTokenClassification.from_pretrained(
-            "./model", num_labels=len(label2id))
+        train_new = input(
+            "A pretrained model already exists. Do you want to train a new model? (y/n): ")
+        if train_new == "y":
+            model = AutoModelForTokenClassification.from_pretrained(
+                "microsoft/layoutlmv3-base", num_labels=len(label2id)
+            )
+        else:
+            model = AutoModelForTokenClassification.from_pretrained(
+                "./model", num_labels=len(label2id))
+
     else:
         model = AutoModelForTokenClassification.from_pretrained(
             "microsoft/layoutlmv3-base", num_labels=len(label2id)
@@ -81,7 +89,9 @@ if __name__ == "__main__":
     dataset.set_format(type='torch', columns=[
         'input_ids', 'attention_mask', 'bbox', 'labels'])
 
-    train_loader = DataLoader(dataset, batch_size=4, shuffle=True)
+    print(f"Number of training examples: {len(dataset)}")
+    batch_size = int(input("Enter the batch size: "))
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     optimizer = optim.AdamW(model.parameters(), lr=5e-5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
