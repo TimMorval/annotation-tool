@@ -3,8 +3,6 @@ import pytesseract
 from PIL import Image
 from uuid import uuid4
 import os
-from tqdm import tqdm
-
 
 # tesseract output levels for the level of detail for the bounding boxes
 LEVELS = {
@@ -62,25 +60,20 @@ def convert_to_ls(image, tesseract_output):
     }
 
 
-def extract_text_from_images(image_folder, output_file):
-    # Path to the folder where the images are stored
-    image_files = [f for f in os.listdir(image_folder) if f.endswith('.png')]
-
-    tasks = []
-
-    # Progress bar with tqdm
-    for file_name in tqdm(image_files, desc="Processing images"):
-        file_path = os.path.join(image_folder, file_name)
-        with Image.open(file_path) as image:
-            tesseract_output = pytesseract.image_to_data(
-                image, lang='fra', output_type=pytesseract.Output.DICT)
-            task = convert_to_ls(image, tesseract_output)
-            tasks.append(task)
-
-    # create a file to import into Label Studio
+def extract_text_from_image(image_path, output_dir):
+    image = Image.open(image_path)
+    tesseract_output = pytesseract.image_to_data(
+        image.convert('L'), lang='fra', output_type=pytesseract.Output.DICT)
+    task = convert_to_ls(image, tesseract_output)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_file = f'{
+        output_dir}/{image_path.split("/")[-1].replace(".png", ".json")}'
     with open(output_file, mode='w') as f:
-        json.dump(tasks, f, indent=2)
+        json.dump(task, f, indent=2)
 
 
 if __name__ == "__main__":
-    extract_text_from_images("images")
+    file_path = input("Enter the file path: ")
+    output_dir = input("Enter the output directory: ")
+    extract_text_from_image(file_path, output_dir)
