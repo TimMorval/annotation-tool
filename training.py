@@ -62,6 +62,7 @@ if __name__ == "__main__":
         label2id = json.load(f)
         id2label = {v: k for k, v in label2id.items()}
     if Path("model").exists():
+        print("Loading model from local directory")
         model = AutoModelForTokenClassification.from_pretrained(
             "./model", num_labels=len(label2id))
     else:
