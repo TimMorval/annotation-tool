@@ -44,8 +44,12 @@ def transform_format(input_data, label_dict):
             )
             transformed_data["bboxes"].append(bbox)
             transformed_data["tokens"].append(result["value"]["text"])
-            transformed_data["ner_tags"].append(
-                label_dict[result["value"]["label"]])
+            try:
+                transformed_data["ner_tags"].append(
+                    label_dict[result["value"]["label"]])
+            except KeyError:
+                raise KeyError(f"Error in {image_path.split(
+                    '/')[-1].replace('.png', '.json')} ")
 
     return transformed_data
 
