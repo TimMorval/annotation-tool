@@ -1,3 +1,5 @@
+#! .venv/bin/python
+
 from pathlib import Path
 import torch.optim as optim
 from transformers import AutoModelForTokenClassification
@@ -10,8 +12,6 @@ import json
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings("ignore")
-
-# Load and process the entire dataset
 
 
 def convert_to_images(image_paths):
@@ -29,9 +29,8 @@ def process_data_to_model_inputs(example):
 def train_model(model, train_loader, optimizer, device, num_epochs):
     model.train()
     model.to(device)
-    for epoch in range(num_epochs):  # Loop over the dataset multiple times
+    for epoch in range(num_epochs):
         running_loss = 0.0
-        # Wrap your DataLoader with tqdm for a progress bar
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
         for i, batch in progress_bar:
             input_ids = batch['input_ids'].to(device)
@@ -85,6 +84,7 @@ if __name__ == "__main__":
     optimizer = optim.AdamW(model.parameters(), lr=5e-5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_model(model, train_loader, optimizer, device, num_epochs=30)
+    num_epochs = int(input("Enter the number of epochs: "))
+    train_model(model, train_loader, optimizer, device, num_epochs=num_epochs)
 
     model.save_pretrained('./model')
