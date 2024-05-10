@@ -40,6 +40,7 @@ class AnnotationTool:
         btn_save = tk.Button(root, text="Save Annotations",
                              command=self.save_annotations)
         btn_save.pack(side=tk.LEFT)
+        self.root.bind("<Command-s>", self.save_annotations_wrapper)
         self.btn_delete = tk.Button(
             root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
         self.btn_delete.pack(side=tk.LEFT)
@@ -262,6 +263,10 @@ class AnnotationTool:
             messagebox.showinfo("Success", "Annotations saved!")
         else:
             messagebox.showerror("Save Error", "No annotations to save.")
+
+    def save_annotations_wrapper(self, event=None):
+        """Wrapper function to call save_annotations without event arguments."""
+        self.save_annotations()
 
 
 if __name__ == "__main__":
