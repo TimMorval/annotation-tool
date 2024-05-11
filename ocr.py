@@ -3,6 +3,7 @@ import pytesseract
 from PIL import Image
 from uuid import uuid4
 import os
+from tqdm import tqdm
 
 # tesseract output levels for the level of detail for the bounding boxes
 LEVELS = {
@@ -73,7 +74,15 @@ def extract_text_from_image(image_path, output_dir):
         json.dump(task, f, indent=2)
 
 
+def extract_texts_from_images(image_dir, output_dir):
+    for image_path in tqdm(os.listdir(image_dir)):
+        extract_text_from_image(f'{image_dir}/{image_path}', output_dir)
+
+
 if __name__ == "__main__":
-    file_path = input("Enter the file path: ")
+    input_path = input("Enter the path: ")
     output_dir = input("Enter the output directory: ")
-    extract_text_from_image(file_path, output_dir)
+    if os.path.isdir(input_path):
+        extract_texts_from_images(input_path, output_dir)
+    else:
+        extract_text_from_image(input_path, output_dir)

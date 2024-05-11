@@ -37,4 +37,7 @@ def convert_to_images(to_convert_folder, output_folder):
 
 
 if __name__ == "__main__":
-    convert_to_images("to_convert", "images")
+    input_folder = input("Enter the folder name containing PDFs to convert: ")
+    output_folder = input(
+        "Enter the folder name to save the converted images: ")
+    convert_to_images(input_folder, output_folder)
