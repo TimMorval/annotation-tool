@@ -37,6 +37,7 @@ class AnnotationTool:
         btn_load = tk.Button(root, text="Load Annotations",
                              command=self.load_annotations)
         btn_load.pack(side=tk.LEFT)
+        self.root.bind("<Command-l>", self.save_load_annotations_wrapper)
         btn_save = tk.Button(root, text="Save Annotations",
                              command=self.save_annotations)
         btn_save.pack(side=tk.LEFT)
@@ -44,6 +45,7 @@ class AnnotationTool:
         self.btn_delete = tk.Button(
             root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
         self.btn_delete.pack(side=tk.LEFT)
+        self.root.bind("<Command-d>", self.delete_wrapper)
         label_label = Label(root, text="Label:")
         label_label.pack(side=tk.LEFT)
         self.label_entry = tk.Entry(root)
@@ -102,6 +104,10 @@ class AnnotationTool:
 
                 # Draw annotations from the loaded file
                 self.draw_annotations(data['predictions'][0]['result'])
+
+    def save_load_annotations_wrapper(self, event=None):
+        """Wrapper function to call load_annotations without event arguments."""
+        self.load_annotations()
 
     def draw_annotations(self, annotations):
         for item in annotations:
@@ -220,6 +226,10 @@ class AnnotationTool:
             self.currently_selected = None
             self.btn_label.config(state=tk.DISABLED)
             self.btn_delete.config(state=tk.DISABLED)
+
+    def delete_wrapper(self, event=None):
+        """Wrapper function to call delete_selected without event arguments."""
+        self.delete_selected()
 
     def format_annotations(self):
         results = []
