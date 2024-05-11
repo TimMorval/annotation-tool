@@ -9,11 +9,24 @@ import json
 
 class AnnotationTool:
     def __init__(self, root: Tk):
+        self.setup_main_window(root)
+        self.create_canvas()
+        self.create_scrollbars()
+        self.setup_bindings()
+        self.setup_annotation_controls()
+        self.initialize_annotation_data()
+
+    def setup_main_window(self, root):
         self.root = root
         self.root.title("Image Annotation Tool")
         self.canvas_frame = tk.Frame(root)
         self.canvas_frame.pack(fill=tk.BOTH, expand=True)
+
+    def create_canvas(self):
         self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    def create_scrollbars(self):
         self.x_scroll = tk.Scrollbar(
             self.canvas_frame, orient="horizontal", command=self.canvas.xview)
         self.y_scroll = tk.Scrollbar(
@@ -22,11 +35,48 @@ class AnnotationTool:
                               yscrollcommand=self.y_scroll.set)
         self.x_scroll.pack(side=tk.BOTTOM, fill=tk.X)
         self.y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    def setup_bindings(self):
         self.canvas.bind("<MouseWheel>", self.on_mousewheel)
         self.canvas.bind("<Button-4>", self.on_mousewheel)
         self.canvas.bind("<Button-5>", self.on_mousewheel)
-        self.root.bind("<Command-MouseWheel>", self.on_mousewheel)
+        self.root.bind("<Command-MouseWheel>",
+                       self.on_mousewheel)  # macOS specific
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        self.root.bind(
+            "<Command-l>", lambda event: self.load_annotations())  # Load
+        self.root.bind(
+            "<Command-s>", lambda event: self.save_annotations())  # Save
+        self.root.bind(
+            "<Command-d>", lambda event: self.delete_selected())  # Delete
+
+    def setup_annotation_controls(self):
+        btn_load = tk.Button(
+            self.root, text="Load Annotations", command=self.load_annotations)
+        btn_load.pack(side=tk.LEFT)
+        btn_save = tk.Button(
+            self.root, text="Save Annotations", command=self.save_annotations)
+        btn_save.pack(side=tk.LEFT)
+        self.btn_delete = tk.Button(
+            self.root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
+        self.btn_delete.pack(side=tk.LEFT)
+        label_label = Label(self.root, text="Label:")
+        label_label.pack(side=tk.LEFT)
+        self.label_entry = tk.Entry(self.root)
+        self.label_entry.pack(side=tk.LEFT)
+        self.label_entry.bind("<Return>", self.add_label)
+        text_label = Label(self.root, text="Text:")
+        text_label.pack(side=tk.LEFT)
+        self.text_entry = tk.Entry(self.root)
+        self.text_entry.pack(side=tk.LEFT)
+        self.text_entry.bind("<Return>", self.add_label)
+        self.btn_label = tk.Button(
+            self.root, text="Add Annotation", command=self.add_label, state=tk.DISABLED)
+        self.btn_label.pack(side=tk.LEFT)
+
+    def initialize_annotation_data(self):
         self.annotations_path = None
         self.img = None
         self.annotations = {}
@@ -34,35 +84,16 @@ class AnnotationTool:
         self.start_x = None
         self.start_y = None
         self.currently_selected = None
-        btn_load = tk.Button(root, text="Load Annotations",
-                             command=self.load_annotations)
-        btn_load.pack(side=tk.LEFT)
-        self.root.bind("<Command-l>", self.save_load_annotations_wrapper)
-        btn_save = tk.Button(root, text="Save Annotations",
-                             command=self.save_annotations)
-        btn_save.pack(side=tk.LEFT)
-        self.root.bind("<Command-s>", self.save_annotations_wrapper)
-        self.btn_delete = tk.Button(
-            root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
-        self.btn_delete.pack(side=tk.LEFT)
-        self.root.bind("<Command-d>", self.delete_wrapper)
-        label_label = Label(root, text="Label:")
-        label_label.pack(side=tk.LEFT)
-        self.label_entry = tk.Entry(root)
-        self.label_entry.pack(side=tk.LEFT)
-        self.label_entry.bind("<Return>", self.add_label)
-        text_label = Label(root, text="Text:")
-        text_label.pack(side=tk.LEFT)
-        self.text_entry = tk.Entry(root)
-        self.text_entry.pack(side=tk.LEFT)
-        self.text_entry.bind("<Return>", self.add_label)
-        self.btn_label = tk.Button(
-            root, text="Add Annotation", command=self.add_label, state=tk.DISABLED)
-        self.btn_label.pack(side=tk.LEFT)
 
-        self.canvas.bind("<ButtonPress-1>", self.on_click)
-        self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+    def reset_ui(self):
+        """Reset the UI components to a clean state."""
+        self.canvas.delete("all")
+        self.annotations = {}
+        self.currently_selected = None
+        self.label_entry.delete(0, tk.END)
+        self.text_entry.delete(0, tk.END)
+        self.btn_label.config(state=tk.DISABLED)
+        self.btn_delete.config(state=tk.DISABLED)
 
     def on_mousewheel(self, event):
         if event.state == 1 or event.num in (4, 5):
@@ -77,54 +108,66 @@ class AnnotationTool:
                 self.canvas.yview_scroll(1, "units")
 
     def load_annotations(self):
+        """Load annotations by asking user for file, reading it, and displaying annotations."""
         annotations_path = filedialog.askopenfilename(
             title="Select JSON Annotations File")
         if annotations_path:
-            with open(annotations_path, 'r') as file:
-                self.annotations_path = annotations_path
-                data = json.load(file)
-                image_path = data['data']['ocr']
-                self.img = Image.open(image_path)
-                self.tk_img = ImageTk.PhotoImage(self.img)
+            try:
+                annotations = self.read_annotation_data(annotations_path)
+                self.reset_ui()
+                self.display_image_and_annotations(annotations)
+            except Exception as e:
+                messagebox.showerror("Error Loading Annotations", str(e))
 
-                # Resetting the canvas and internal states
-                self.canvas.delete("all")  # Clear the canvas of any drawings
-                self.annotations.clear()  # Clear any stored annotations
-                self.currently_selected = None  # Clear current selection
-                self.label_entry.delete(0, tk.END)  # Clear label entry box
-                self.text_entry.delete(0, tk.END)  # Clear text entry box
-                # Disable Add Annotation button
-                self.btn_label.config(state=tk.DISABLED)
-                # Disable Delete button
-                self.btn_delete.config(state=tk.DISABLED)
+    def read_annotation_data(self, path):
+        """Read and return annotation data from the specified file path."""
+        with open(path, 'r') as file:
+            self.annotations_path = path
+            data = json.load(file)
+            self.image_path = data['data']['ocr']
+            self.img = Image.open(self.image_path)
+            annotations = data['predictions'][0]['result']
+            return annotations
 
-                # Create image and set scroll region
-                self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
-                self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
-
-                # Draw annotations from the loaded file
-                self.draw_annotations(data['predictions'][0]['result'])
-
-    def save_load_annotations_wrapper(self, event=None):
-        """Wrapper function to call load_annotations without event arguments."""
-        self.load_annotations()
+    def display_image_and_annotations(self, annotations):
+        """Display the image on the canvas and draw the loaded annotations."""
+        try:
+            self.tk_img = ImageTk.PhotoImage(self.img)
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_img)
+            self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
+            self.draw_annotations(annotations)
+        except Exception as e:
+            raise RuntimeError("Failed to display annotations: " + str(e))
 
     def draw_annotations(self, annotations):
+        """Draw annotations on the canvas."""
         for item in annotations:
             if item['type'] == 'textarea':
-                bbox = item['value']
-                x1 = bbox['x'] * self.img.width / 100
-                y1 = bbox['y'] * self.img.height / 100
-                x2 = x1 + (bbox['width'] * self.img.width / 100)
-                y2 = y1 + (bbox['height'] * self.img.height / 100)
-                rect_id = self.canvas.create_rectangle(
-                    x1, y1, x2, y2, outline='red', tags="rectangle")
-                text_x = bbox['x'] * self.img.width / 100
-                text_y = bbox['y'] * self.img.height / 100 - 12
-                text_id = self.canvas.create_text(text_x, text_y, anchor='nw', text=dedent(f"""{
-                    bbox['text']} ({bbox['label']})"""), font=("Purisa", 10), fill="blue")
-                self.annotations[rect_id] = {'rect_id': rect_id, 'text_id': text_id,
-                                             'value': bbox, 'text': bbox['text'], 'label': bbox['label']}
+                self.draw_text_area_annotation(item)
+
+    def draw_text_area_annotation(self, item):
+        """Draw a text area annotation based on its description."""
+        bbox = item['value']
+        x1, y1, x2, y2 = self.calculate_bbox_coordinates(bbox)
+        rect_id = self.canvas.create_rectangle(
+            x1, y1, x2, y2, outline='red', tags="rectangle")
+        text_x, text_y = x1, y1 - 12
+        text_id = self.canvas.create_text(
+            text_x, text_y, anchor='nw', text=dedent(f"{bbox['text']} ({bbox['label']})"),
+            font=("Purisa", 10), fill="blue"
+        )
+        self.annotations[rect_id] = {
+            'rect_id': rect_id, 'text_id': text_id,
+            'value': bbox, 'text': bbox['text'], 'label': bbox['label']
+        }
+
+    def calculate_bbox_coordinates(self, bbox):
+        """Calculate and return bounding box coordinates based on image dimensions."""
+        x1 = bbox['x'] * self.img.width / 100
+        y1 = bbox['y'] * self.img.height / 100
+        x2 = x1 + (bbox['width'] * self.img.width / 100)
+        y2 = y1 + (bbox['height'] * self.img.height / 100)
+        return x1, y1, x2, y2
 
     def on_click(self, event):
         self.start_x = self.canvas.canvasx(event.x)
@@ -227,45 +270,42 @@ class AnnotationTool:
             self.btn_label.config(state=tk.DISABLED)
             self.btn_delete.config(state=tk.DISABLED)
 
-    def delete_wrapper(self, event=None):
-        """Wrapper function to call delete_selected without event arguments."""
-        self.delete_selected()
-
     def format_annotations(self):
-        results = []
-        for annotation in self.annotations.values():
-            annot_value = annotation['value']
-            bbox = {
-                'x': annot_value['x'],
-                'y': annot_value['y'],
-                'width': annot_value['width'],
-                'height': annot_value['height'],
-                'rotation': 0
-            }
-            h = bbox['height']
-            text = annot_value['text']
-            label = annot_value['label']
-            if not text or not label or h == 0:
-                continue
-            region_id = str(uuid4())[:10]
-            bbox_result = {
-                'id': region_id, 'from_name': 'bbox', 'to_name': 'image', 'type': 'rectangle',
-                'value': bbox}
-            transcription_result = {
-                'id': region_id, 'from_name': 'transcription', 'to_name': 'image', 'type': 'textarea',
-                'value': dict(text=text, label=label, **bbox)}
-            results.extend([bbox_result, transcription_result])
+        """Format annotations for exporting, ensuring that only valid annotations are included."""
+        results = [self.format_single_annotation(
+            annotation) for annotation in self.annotations.values() if self.is_annotation_valid(annotation)]
+        # Flatten the list and remove None
+        results = [item for sublist in results for item in sublist if sublist]
         return {
-            'data': {
-                'ocr': self.img.filename
-            },
-            'predictions': [{
-                'result': results,
-                'score': 100
-            }]
+            'data': {'ocr': self.img.filename},
+            'predictions': [{'result': results, 'score': 100}]
         }
 
+    def is_annotation_valid(self, annotation):
+        """Check if an annotation is valid based on its content and dimensions."""
+        annot_value = annotation['value']
+        return annot_value['text'] and annot_value['label'] and annot_value['height'] > 0
+
+    def format_single_annotation(self, annotation):
+        """Format a single annotation into the required dictionary format for bbox and transcription."""
+        annot_value = annotation['value']
+        region_id = str(uuid4())[:10]
+        bbox = {key: annot_value[key] for key in ['x', 'y', 'width', 'height']}
+        bbox['rotation'] = 0
+
+        return [
+            {
+                'id': region_id, 'from_name': 'bbox', 'to_name': 'image', 'type': 'rectangle',
+                'value': bbox
+            },
+            {
+                'id': region_id, 'from_name': 'transcription', 'to_name': 'image', 'type': 'textarea',
+                'value': {**bbox, 'text': annot_value['text'], 'label': annot_value['label']}
+            }
+        ]
+
     def save_annotations(self):
+        """Saves the annotations to a file."""
         if self.annotations:
             formatted_annotations = self.format_annotations()
             with open(self.annotations_path, "w") as file:
@@ -273,10 +313,6 @@ class AnnotationTool:
             messagebox.showinfo("Success", "Annotations saved!")
         else:
             messagebox.showerror("Save Error", "No annotations to save.")
-
-    def save_annotations_wrapper(self, event=None):
-        """Wrapper function to call save_annotations without event arguments."""
-        self.save_annotations()
 
 
 if __name__ == "__main__":
