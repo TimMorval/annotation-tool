@@ -10,3 +10,4 @@ done
 model
 annotated_image.png
 *.ipynb
+.DS_Store
