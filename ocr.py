@@ -75,7 +75,7 @@ def extract_text_from_image(image_path, output_dir):
 
 
 def extract_texts_from_images(image_dir, output_dir):
-    for image_path in tqdm(os.listdir(image_dir)):
+    for image_path in tqdm(os.listdir(image_dir), desc='Extracting texts'):
         extract_text_from_image(f'{image_dir}/{image_path}', output_dir)
 
 

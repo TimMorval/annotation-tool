@@ -15,6 +15,7 @@ class AnnotationTool:
         self.setup_bindings()
         self.setup_annotation_controls()
         self.initialize_annotation_data()
+        self.precision = 1e-2
 
     def setup_main_window(self, root):
         self.root = root
@@ -112,12 +113,20 @@ class AnnotationTool:
         annotations_path = filedialog.askopenfilename(
             title="Select JSON Annotations File")
         if annotations_path:
+            self.annotations_path = annotations_path
             try:
-                annotations = self.read_annotation_data(annotations_path)
-                self.reset_ui()
-                self.display_image_and_annotations(annotations)
+                self.refresh_annotations()
             except Exception as e:
                 messagebox.showerror("Error Loading Annotations", str(e))
+
+    def refresh_annotations(self):
+        """Refresh the annotations on the canvas."""
+        if self.annotations_path:
+            annotations = self.read_annotation_data(self.annotations_path)
+            self.reset_ui()
+            self.display_image_and_annotations(annotations)
+        else:
+            messagebox.showerror("Could not reload annotations")
 
     def read_annotation_data(self, path):
         """Read and return annotation data from the specified file path."""
@@ -208,13 +217,13 @@ class AnnotationTool:
     def on_release(self, event):
         if self.rect:
             if self.rect not in self.annotations:
-                bbox = {
+                bbox = self.format_bbox({
                     'x': self.start_x * 100 / self.img.width,
                     'y': self.start_y * 100 / self.img.height,
                     'width': (self.canvas.canvasx(event.x) - self.start_x) * 100 / self.img.width,
                     'height': (self.canvas.canvasy(event.y) - self.start_y) * 100 / self.img.height,
                     'rotation': 0
-                }
+                })
                 self.annotations[self.rect] = {
                     'rect_id': self.rect, 'text_id': None, 'value': bbox}
             self.canvas.itemconfig(self.rect, outline='green')
@@ -222,6 +231,22 @@ class AnnotationTool:
             self.btn_delete.config(state=tk.NORMAL)
             self.label_entry.focus_set()
             self.currently_selected = self.rect
+
+    def format_bbox(self, bbox):
+        x1 = bbox['x']
+        y1 = bbox['y']
+        x2 = x1 + bbox['width']
+        y2 = y1 + bbox['height']
+        x1, x2 = min(x1, x2), max(x1, x2)
+        y1, y2 = min(y1, y2), max(y1, y2)
+        new_bbox = {
+            'x': x1,
+            'y': y1,
+            'width': x2-x1,
+            'height': y2-y1,
+            'rotation': 0
+        }
+        return new_bbox
 
     def add_label(self, event=None):
         if self.currently_selected and self.label_entry.get().strip() and self.text_entry.get().strip():
@@ -284,7 +309,7 @@ class AnnotationTool:
     def is_annotation_valid(self, annotation):
         """Check if an annotation is valid based on its content and dimensions."""
         annot_value = annotation['value']
-        return annot_value['text'] and annot_value['label'] and annot_value['height'] > 0
+        return annot_value['text'].strip() and annot_value['label'] and annot_value['height'] > self.precision and annot_value['width'] > self.precision
 
     def format_single_annotation(self, annotation):
         """Format a single annotation into the required dictionary format for bbox and transcription."""
@@ -311,6 +336,7 @@ class AnnotationTool:
             with open(self.annotations_path, "w") as file:
                 json.dump(formatted_annotations, file, indent=4)
             messagebox.showinfo("Success", "Annotations saved!")
+            self.refresh_annotations()
         else:
             messagebox.showerror("Save Error", "No annotations to save.")
 

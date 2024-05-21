@@ -33,7 +33,7 @@ def transform_format(input_data, label_dict):
         "tokens": [],
         "bboxes": [],
         "ner_tags": [],
-        "image_path": image_path,
+        "image_path": '/'.join(image_path.split("/")[-2:]),
     }
 
     for result in input_data["predictions"][0]["result"]:
