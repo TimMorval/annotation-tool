@@ -80,6 +80,8 @@ class ImageAnnotator:
                     'end': (int(box[2]), int(box[3])),
                     'label': label
                 })
+            if data == []:
+                raise ValueError("No labels detected in the image")
         return pd.DataFrame(data)
 
     def process_labels(self, df):
@@ -130,6 +132,8 @@ class ImageAnnotator:
 
     def get_formatted_predictions(self, file_path):
         original_image = cv2.imread(file_path)
+        if original_image is None:
+            raise FileNotFoundError("Image not found")
         height, width, _ = original_image.shape
         encoding, logits = self.get_predictions(file_path)
         true_boxes, true_predictions, true_prob = self.process_logits(
@@ -153,6 +157,7 @@ class ImageAnnotator:
 
 if __name__ == "__main__":
     annotator = ImageAnnotator()
-    result_dict = annotator.run("images/BENJAMIN_REPINGON_01_04_2024.png",
+    image_path = input("Enter the image path: ")
+    result_dict = annotator.run(image_path,
                                 save_path="annotated_image.png")
     print(result_dict)
