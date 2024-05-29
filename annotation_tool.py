@@ -5,10 +5,12 @@ from tkinter import messagebox
 from uuid import uuid4
 from PIL import Image, ImageTk
 import json
+import os
+import shutil
 
 
 class AnnotationTool:
-    def __init__(self, root: Tk):
+    def __init__(self, root: Tk, done_folder: str = "done"):
         self.setup_main_window(root)
         self.create_canvas()
         self.create_scrollbars()
@@ -16,6 +18,7 @@ class AnnotationTool:
         self.setup_annotation_controls()
         self.initialize_annotation_data()
         self.precision = 1e-2
+        self.done_folder = done_folder
 
     def setup_main_window(self, root):
         self.root = root
@@ -63,6 +66,9 @@ class AnnotationTool:
         self.btn_delete = tk.Button(
             self.root, text="Delete", command=self.delete_selected, state=tk.DISABLED)
         self.btn_delete.pack(side=tk.LEFT)
+        self.btn_done = tk.Button(
+            self.root, text="Done", command=self.move_to_done)
+        self.btn_done.pack(side=tk.LEFT)
         label_label = Label(self.root, text="Label:")
         label_label.pack(side=tk.LEFT)
         self.label_entry = tk.Entry(self.root)
@@ -207,7 +213,7 @@ class AnnotationTool:
             curX = self.canvas.canvasx(event.x)
             curY = self.canvas.canvasy(event.y)
             self.rect = self.canvas.create_rectangle(
-                self.start_x, self.start_y, curX, curY, outline='red', tags="rectangle")
+                self.start_x, self.start_y, curX, curY, outline="red", tags="rectangle")
         else:
             curX = self.canvas.canvasx(event.x)
             curY = self.canvas.canvasy(event.y)
@@ -339,6 +345,18 @@ class AnnotationTool:
             self.refresh_annotations()
         else:
             messagebox.showerror("Save Error", "No annotations to save.")
+
+    def move_to_done(self):
+        """Move the selected annotation file to the done folder."""
+        if self.annotations_path:
+            done_path = os.path.join(
+                self.done_folder, os.path.basename(self.annotations_path))
+            os.makedirs(self.done_folder, exist_ok=True)
+            shutil.move(self.annotations_path, done_path)
+            messagebox.showinfo("Success", f"Moved to {self.done_folder}")
+            self.reset_ui()
+        else:
+            messagebox.showerror("Move Error", "No file to move.")
 
 
 if __name__ == "__main__":
