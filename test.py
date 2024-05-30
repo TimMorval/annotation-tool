@@ -45,7 +45,7 @@ def data_fusion(dir_path, file_groups):
         yield filename, annotations
 
 
-def run_test(dir_path):
+def run_test(dir_path, true_labels):
     file_groups = group_files(dir_path)
     datas = data_fusion(dir_path, file_groups)
     error = 0
@@ -54,6 +54,9 @@ def run_test(dir_path):
         for annotation in annotations:
             if annotation["type"] == "textarea":
                 label = annotation["value"]["label"]
+                if label not in true_labels:
+                    print(f"File {filename} has label wrong label {label}")
+                    error += 1
                 labels.add(label)
         if "B-DATE" not in labels:
             print(f"File {filename} does not have B-DATE")
@@ -66,4 +69,7 @@ def run_test(dir_path):
 
 if __name__ == "__main__":
     dir_path = "done"
-    run_test(dir_path)
+    with open("labels.json") as f:
+        labels_dict = json.load(f)
+        true_labels = list(labels_dict.keys())
+    run_test(dir_path, true_labels)
