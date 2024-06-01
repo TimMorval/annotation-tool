@@ -80,8 +80,8 @@ class ImageAnnotator:
                     'end': (int(box[2]), int(box[3])),
                     'label': label
                 })
-            if data == []:
-                raise ValueError("No labels detected in the image")
+        if data == []:
+            raise ValueError("No labels detected in the image")
         return pd.DataFrame(data)
 
     def process_labels(self, df):

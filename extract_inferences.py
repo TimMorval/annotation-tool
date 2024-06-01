@@ -8,7 +8,8 @@ if not os.path.exists("results"):
     os.mkdir("results")
 
 errors = []
-for image in tqdm(os.listdir("images"), desc="Annotating images"):
+images = os.listdir("images")
+for image in tqdm(images, desc="Annotating images"):
     if image.endswith(".png"):
         if os.path.exists(f"results/{image.replace('.png', '.json')}"):
             continue
@@ -21,4 +22,4 @@ for image in tqdm(os.listdir("images"), desc="Annotating images"):
             continue
 for error in errors:
     print(error)
-print(f"Total errors: {len(errors)}")
+print(f"Total errors rate: {len(errors)/len(images)*100:.2f}%")
