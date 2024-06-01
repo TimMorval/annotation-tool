@@ -55,7 +55,8 @@ def run_test(dir_path, true_labels):
             if annotation["type"] == "textarea":
                 label = annotation["value"]["label"]
                 if label not in true_labels:
-                    print(f"File {filename} has label wrong label {label}")
+                    print(f"File {filename} has label wrong label {
+                          label} on word {annotation['value']['text']}")
                     error += 1
                 labels.add(label)
         if "B-DATE" not in labels:
