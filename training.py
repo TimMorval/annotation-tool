@@ -26,7 +26,7 @@ def process_data_to_model_inputs(example):
     return {k: v.squeeze() for k, v in encoding.items()}
 
 
-def train_model(model, train_loader, optimizer, device, num_epochs):
+def train_model(model, train_loader, optimizer, device, num_epochs, saving_path=None):
     model.train()
     model.to(device)
     for epoch in range(num_epochs):
@@ -53,6 +53,7 @@ def train_model(model, train_loader, optimizer, device, num_epochs):
             # Update tqdm with loss information
             progress_bar.set_description(
                 f"Epoch {epoch + 1} Loss: {running_loss / (i + 1):.4f}")
+        model.save_pretrained(saving_path)
     print('Finished Training')
 
 
@@ -94,8 +95,10 @@ if __name__ == "__main__":
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     optimizer = optim.AdamW(model.parameters(), lr=5e-5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     num_epochs = int(input("Enter the number of epochs: "))
-    train_model(model, train_loader, optimizer, device, num_epochs=num_epochs)
+    saving_path = input("Enter the path to save the model: ")
 
-    model.save_pretrained('./model')
+    train_model(model, train_loader, optimizer, device,
+                num_epochs=num_epochs, saving_path=saving_path)
+
+    model.save_pretrained(saving_path)
